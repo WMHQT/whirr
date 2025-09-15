@@ -1,0 +1,29 @@
+import atexit
+import json
+import logging.config
+
+from config import LogsConfig
+
+
+system_logger: logging.Logger = logging.getLogger("system")
+model_logger: logging.Logger = logging.getLogger("model")
+
+
+def load_log_config(config_path: str = LogsConfig.LOG_CONFIG_PATH) -> dict:
+    with open(config_path) as file:
+        return json.load(file)
+
+
+def start_queue_handler(queue_handler: logging.Handler) -> None:
+    queue_handler.listener.start()
+    atexit.register(queue_handler.listener.stop)
+
+
+def setup_logging() -> None:
+    config = load_log_config()
+    logging.config.dictConfig(config)
+    system_queue = logging.getHandlerByName("system_queue")
+    model_queue = logging.getHandlerByName("model_queue")
+    start_queue_handler(system_queue)
+    start_queue_handler(model_queue)
+

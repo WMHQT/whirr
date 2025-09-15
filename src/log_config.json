@@ -1,0 +1,76 @@
+{
+    "version": 1,
+    "disable_existing_loggers": false,
+    "formatters": {
+        "console": {
+            "format": "[%(levelname)s|%(module)s|L%(lineno)d]: %(message)s"
+        },
+        "json": {
+            "()": "log_formatter.JSONFormatter",
+            "fmt_keys": {
+                "level": "levelname",
+                "message": "message",
+                "timestamp": "timestamp",
+                "logger": "name",
+                "module": "module",
+                "function": "funcName",
+                "line": "lineno",
+                "thread_name": "threadName"
+            }
+        }
+    },
+    "handlers": {
+        "system_stderr": {
+            "class": "logging.StreamHandler",
+            "level": "WARNING",
+            "formatter": "console",
+            "stream": "ext://sys.stderr"
+        },
+        "system_file": {
+            "class": "logging.handlers.RotatingFileHandler",
+            "level": "DEBUG",
+            "formatter": "json",
+            "filename": "logs/system.log.jsonl",
+            "maxBytes": 5242880,
+            "backupCount": 1
+        },
+        "model_file": {
+            "class": "logging.handlers.RotatingFileHandler",
+            "level": "DEBUG",
+            "formatter": "json",
+            "filename": "logs/model.log.jsonl",
+            "maxBytes": 5242880,
+            "backupCount": 1
+        },
+        "system_queue": {
+            "class": "logging.handlers.QueueHandler",
+            "handlers": [
+                "system_stderr",
+                "system_file"
+            ],
+            "respect_handler_level": true
+        },
+        "model_queue": {
+            "class": "logging.handlers.QueueHandler",
+            "handlers": [
+                "model_file"
+            ],
+            "respect_handler_level": true
+        }
+    },
+    "loggers": {
+        "system": {
+            "level": "DEBUG",
+            "handlers": [
+                "system_queue"
+            ]
+        },
+        "model": {
+            "level": "DEBUG",
+            "handlers": [
+                "model_queue"
+            ],
+            "propagate": false
+        }
+    }
+}    
