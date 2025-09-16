@@ -53,6 +53,7 @@ def display_prediction(category_pred: tuple[int, float], target_pred: tuple[int,
     target_score = target_pred[1]
 
     print(f"{category_label:^{12}} - {category_score * 100:^{9}.2f}% | {target_label:^{12}} - {target_score * 100:^{9}.2f}%")
+    model_logger.info(f"({category_label}, {category_score:.4f}), ({target_label}, {target_score:.4f})")
 
 
 def do_inference(time_series: NDArray) -> None:

@@ -5,12 +5,12 @@ from numpy.typing import NDArray
 from config import AudioConfig, InferenceConfig
 
 
-# def read_time_series_from_buffer(frames: bytes) -> NDArray:
-#     time_series = np.frombuffer(frames, dtype=np.int16)
-#     time_series = time_series.reshape(-1, 2).mean(axis=1)
-#     time_series = time_series.astype(np.float32) / np.iinfo(np.int16).max
+def read_time_series_from_buffer(frames: bytes) -> NDArray:
+    time_series = np.frombuffer(frames, dtype=np.int16)
+    time_series = time_series.reshape(-1, 2).mean(axis=1)
+    time_series = time_series.astype(np.float32) / np.iinfo(np.int16).max
     
-#     return time_series
+    return time_series
 
 
 def convert_time_series_to_spectogram(time_series: NDArray) -> NDArray:
