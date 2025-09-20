@@ -6,6 +6,7 @@
 1. Создайте и активируйте виртуальное окружение.
 ```Python
 uv venv
+source .venv/bin/activate
 ```
 
 2. Установите зависимости:
@@ -13,7 +14,12 @@ uv venv
 uv pip install -r pyproject.toml
 ```
 
-3. Запустите приложение:
+3. Установите пакет приложения.
+```Python
+uv pip install -e .
+```
+
+4. Запустите приложение:
 ```Python
 whirr
 ```
