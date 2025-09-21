@@ -29,3 +29,4 @@ class ModelConfig:
 class LogsConfig:
     LOG_CONFIG_PATH: str = "src/log_config.json"
     LOG_RECORD_PATH: str = "logs/record.log.wav"
+    LOGS_DIR_PATH: Path = Path("logs")
