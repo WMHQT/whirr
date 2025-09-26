@@ -1,4 +1,6 @@
 import click
+import os
+import json
 
 from __init__ import __version__
 from capture import setup_capture
@@ -8,6 +10,20 @@ from utils.configure_mics import (
     set_microphones,
 )
 from utils.draw_logo import draw_logo
+
+def read_interface_config():
+    '''Read the active interface configuration from JSON file.'''
+    current_dir = os.path.dirname(os.path.abspath(__file__))
+    config_file = os.path.join(current_dir, "interface_config.json")
+    if os.path.exists(config_file):
+        try:
+            with open(config_file, 'r') as f:
+                return json.load(f)
+        except (json.JSONDecodeError, KeyError):
+            return None
+    return None
+
+
 
 
 @click.group(invoke_without_command=True)
@@ -34,22 +50,30 @@ def mics() -> None:
     pass
 
 
-@click.command("list")
-def list_mics() -> None:
+@mics.command("list")
+@click.option("--active", is_flag=True, help ="Show only active interface")
+def list_mics(active: bool) -> None:
     """List available microphones."""
-    click.echo("Available microphones:")
-    click.echo(list_microphones())
+    if active:
+        config = read_interface_config()
+        if config and "interface_id" in config:
+            active_interface_id = config["interface_id"]
+            click.echo("Active interface:")
+            click.echo(list_microphones(active_only=True, active_id = active_interface_id))
+        else:
+            click.echo("No active interface configured.")
+    else:
+        config = read_interface_config()
+        active_interface_id = config.get("interface_id") if config else None
+        click.echo("Available microphones:")
+        click.echo(list_microphones(active_only=False, active_id = active_interface_id))
 
 
-@click.command("set")
+@mics.command("set")
 @click.argument("device_index", type=int, nargs=-1)
 def set_mics(device_index: int) -> None:
     """Set active microphones."""
     click.echo("Active microphones:")
     click.echo(set_microphones(device_index))
-
-
-mics.add_command(list_mics)
-mics.add_command(set_mics)
 
 cli.add_command(start)

@@ -1,16 +1,29 @@
 import sounddevice as sd
 
 
-def list_microphones() -> None:
-    s = sd.query_devices()
-    for i, v in enumerate(s):
-        device_info = v
+def list_microphones(active_only: bool = False, active_id: int = None) -> str:
+    result = []
+    devices = sd.query_devices()
+
+    for i, device_info in enumerate(devices):
         if int(device_info['max_input_channels']):
-            print(f"  Index       : {i}")
-            print(f"  Device Name : {device_info['name']}")
-            print(f"  Sample Rate : {device_info['default_samplerate']}")
-            print(f"  Channels    : {device_info['max_input_channels']}")
-            print("-" * 25)
+            if active_only:
+                if i == active_id:
+                    result.append(f"  Index       : {i}")
+                    result.append(f"  Device Name : {device_info['name']}")
+                    result.append(f"  Sample Rate : {device_info['default_samplerate']}")
+                    result.append(f"  Channels    : {device_info['max_input_channels']}")
+                    result.append("-" * 25)
+            else:
+                if i == active_id:
+                    result.append(f"  Index       : {i}  (*)")
+                else:
+                    result.append(f"  Index       : {i}  ")
+                result.append(f"  Device Name : {device_info['name']}")
+                result.append(f"  Sample Rate : {device_info['default_samplerate']}")
+                result.append(f"  Channels    : {device_info['max_input_channels']}")
+                result.append("-" * 25)
+    return "\n".join(result) if result else "No microphones found"
 
 
 def set_microphones(device_index: int) -> None:
