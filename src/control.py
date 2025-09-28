@@ -6,25 +6,11 @@ from __init__ import __version__
 from capture import setup_capture
 from logger import setup_logging
 from utils.configure_mics import (
+    read_interface_config,
     list_microphones,
     set_microphones,
 )
 from utils.draw_logo import draw_logo
-
-def read_interface_config():
-    '''Read the active interface configuration from JSON file.'''
-    current_dir = os.path.dirname(os.path.abspath(__file__))
-    config_file = os.path.join(current_dir, "interface_config.json")
-    if os.path.exists(config_file):
-        try:
-            with open(config_file, 'r') as f:
-                return json.load(f)
-        except (json.JSONDecodeError, KeyError):
-            return None
-    return None
-
-
-
 
 @click.group(invoke_without_command=True)
 @click.version_option(__version__)
@@ -51,23 +37,22 @@ def mics() -> None:
 
 
 @mics.command("list")
-@click.option("--active", is_flag=True, help ="Show only active interface")
+@click.option("--active", is_flag=True, help="Show only active interface")
 def list_mics(active: bool) -> None:
     """List available microphones."""
     if active:
         config = read_interface_config()
-        if config and "interface_id" in config:
+        if config:
             active_interface_id = config["interface_id"]
             click.echo("Active interface:")
-            click.echo(list_microphones(active_only=True, active_id = active_interface_id))
+            click.echo(list_microphones(active_only=True, active_id=active_interface_id))
         else:
             click.echo("No active interface configured.")
     else:
         config = read_interface_config()
         active_interface_id = config.get("interface_id") if config else None
         click.echo("Available microphones:")
-        click.echo(list_microphones(active_only=False, active_id = active_interface_id))
-
+        click.echo(list_microphones(active_only=False, active_id=active_interface_id))
 
 @mics.command("set")
 @click.argument("device_index", type=int, nargs=-1)
