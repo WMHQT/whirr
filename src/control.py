@@ -58,6 +58,7 @@ def list_mics(active: bool) -> None:
 @click.argument("device_index", type=int, nargs=-1)
 def set_mics(device_index: int) -> None:
     """Set active microphones."""
+    print(device_index)
     click.echo("Active microphones:")
     click.echo(set_microphones(device_index))
 
