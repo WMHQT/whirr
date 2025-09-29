@@ -12,3 +12,4 @@ wheels/
 # Other
 .env
 .coverage
+src/utils/interface_config.json

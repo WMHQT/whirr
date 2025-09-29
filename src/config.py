@@ -9,6 +9,7 @@ class AudioConfig:
     SAMPLE_WIDTH: int = 2
     CHANNELS: int = 1
     CHUNK_SIZE: int = 1024
+    INTERFACE_CONFIG_PATH = str = "src/utils/interface_config.json"
 
 
 @dataclass(frozen=True)
