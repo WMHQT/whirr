@@ -5,7 +5,7 @@ import os
 from config import AudioConfig
 
 
-def load_interface_config(config_path: str = AudioConfig.INTERFACE_CONFIG_PATH):
+def load_interface_config(config_path: str = AudioConfig.INTERFACE_CONFIG_PATH) -> dict | None:
     """Read the active interface configuration from JSON file.
     Returns dict with interface_id or empty dict if not configured."""
     
