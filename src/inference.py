@@ -1,14 +1,34 @@
 import numpy as np
 import onnxruntime as ort
 from numpy.typing import NDArray
+import os
+import threading
 
 from config import ModelConfig
 from logger import model_logger
 from utils.preprocess_audio import convert_time_series_to_spectogram
 
 
-SESSION = ort.InferenceSession(ModelConfig.MODEL)
-INPUT_NAME = SESSION.get_inputs()[0].name
+def create_session():
+    options = ort.SessionOptions()
+    options.intra_op_num_threads = 1
+    options.inter_op_num_threads = 1
+    return ort.InferenceSession(ModelConfig.MODEL, options)
+
+_thread_local = threading.local()
+
+def get_session():
+    if not hasattr(_thread_local, "session"):
+        options = ort.SessionOptions()
+        options.intra_op_num_threads = 1
+        options.inter_op_num_threads = 1
+        _thread_local.session = ort.InferenceSession(ModelConfig.MODEL, options)
+    return _thread_local.session
+
+
+def get_input_name():
+    session = get_session()
+    return session.get_inputs()[0].name
 
 
 CATEGORY = {
@@ -31,7 +51,9 @@ TARGET = {
 
 
 def make_prediction(processed_audio: NDArray) -> tuple[tuple[int, float], tuple[int, float]]:
-    predictions = SESSION.run([], {INPUT_NAME: processed_audio})
+    session = get_session()
+    input_name = get_input_name()
+    predictions = session.run([], {input_name: processed_audio})
 
     category_pred = _get_prediction(predictions[0][0])
     target_pred = _get_prediction(predictions[1][0])
@@ -60,4 +82,4 @@ def do_inference(time_series: NDArray) -> None:
     spectogram = convert_time_series_to_spectogram(time_series)
     processed_audio = np.expand_dims(spectogram, axis=(-1, 0))
     category_pred, target_pred = make_prediction(processed_audio)
-    display_prediction(category_pred, target_pred)
+    return category_pred, target_pred

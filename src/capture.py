@@ -2,12 +2,14 @@ import sounddevice as sd
 import numpy as np
 from numpy.typing import NDArray
 import wave
+import time
 
 import inference
 from config import (
     AudioConfig,
     LogsConfig,
 )
+from broker import setup_broker, stop_channel_processes
 
 
 def init_stream(device_index: int | None = None) -> sd.InputStream:
@@ -20,19 +22,34 @@ def init_stream(device_index: int | None = None) -> sd.InputStream:
     )
 
 
-def record_continously(stream: sd.InputStream) -> None:
+def record_continously(stream: sd.InputStream, input_queues, result_queue) -> None:
     total_chunks = int((AudioConfig.SAMPLE_RATE / AudioConfig.CHUNK_SIZE) * 2)
+    channel_counter = 0
 
     with stream as s:
         try:
             while True:
+                timestamp = time.time()
                 time_series = read_audio_chunk(stream, total_chunks)
-                inference.do_inference(time_series)
+                
+                # Циклическое распределение по каналам
+                target_queue = input_queues[channel_counter]
+                if not target_queue.full():
+                    target_queue.put((timestamp, time_series))
+                
+                channel_counter = (channel_counter + 1) % len(input_queues)
+                
+                # Неблокирующая проверка результатов
+                try:
+                    while True:
+                        result_timestamp, channel_id, result = result_queue.get_nowait()
+                        category_pred, target_pred = result
+                        print(f"Channel {channel_id}: {category_pred}, {target_pred}")
+                except Empty:
+                    continue
+                    
         except KeyboardInterrupt:
             print("\nStop recording...")
-    
-    save_to_wav()
-
 
 def read_audio_chunk(stream: sd.InputStream, total_chunks: int) -> NDArray:
     audio_chunks = []
@@ -57,5 +74,11 @@ def save_to_wav(path: str = LogsConfig.LOG_RECORD_PATH) -> None:
 
 
 def setup_capture() -> None:
-    stream = init_stream()
-    record_continously(stream)
+    input_queues, result_queue, processes = setup_broker()
+    
+    try:
+        stream = init_stream()
+        record_continously(stream, input_queues, result_queue)
+    finally:
+        # Остановка процессов при завершении
+        stop_channel_processes(processes, input_queues)
