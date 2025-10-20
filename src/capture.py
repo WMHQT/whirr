@@ -2,6 +2,7 @@ import sounddevice as sd
 import numpy as np
 from numpy.typing import NDArray
 import wave
+from interface_config import load_interface_id
 
 import inference
 from config import (
@@ -11,13 +12,21 @@ from config import (
 
 
 def init_stream(device_index: int | None = None) -> sd.InputStream:
-    return sd.InputStream(
-        samplerate=AudioConfig.SAMPLE_RATE,
-        channels=AudioConfig.CHANNELS,
-        dtype=AudioConfig.FORMAT,
-        blocksize=AudioConfig.CHUNK_SIZE,
-        device=device_index
-    )
+    try:
+        devices = sd.query_devices()
+        if device_index is not None:
+            if device_index < 0 or device_index >= len(devices):
+                raise ValueError(f"Device with id={device_index} is unavailable")
+        return sd.InputStream(
+            samplerate=AudioConfig.SAMPLE_RATE,
+            channels=AudioConfig.CHANNELS,
+            dtype=AudioConfig.FORMAT,
+            blocksize=AudioConfig.CHUNK_SIZE,
+            device=device_index,
+        )
+    except Exception as e:
+        raise RuntimeError(f"Audio stream initialization error: {e}")
+
 
 
 def record_continously(stream: sd.InputStream) -> None:
@@ -57,5 +66,11 @@ def save_to_wav(path: str = LogsConfig.LOG_RECORD_PATH) -> None:
 
 
 def setup_capture() -> None:
-    stream = init_stream()
+    device_id = load_interface_id()
+    print(f"[INFO] Using device: {device_id}")
+    try:
+        stream = init_stream(device_id)
+    except RuntimeError as e:
+        print(e)
+        return
     record_continously(stream)
