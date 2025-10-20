@@ -10,16 +10,25 @@ from config import (
     LogsConfig,
 )
 from broker import setup_broker, stop_channel_processes
+from utils.configure_mics import load_interface_config
 
 
 def init_stream(device_index: int | None = None) -> sd.InputStream:
-    return sd.InputStream(
-        samplerate=AudioConfig.SAMPLE_RATE,
-        channels=AudioConfig.CHANNELS,
-        dtype=AudioConfig.FORMAT,
-        blocksize=AudioConfig.CHUNK_SIZE,
-        device=device_index
-    )
+    try:
+        devices = sd.query_devices()
+
+        if device_index is None or device_index < 0 or device_index >= len(devices):
+                raise ValueError(f"Device with id={device_index} is unavailable.")
+
+        return sd.InputStream(
+            samplerate=AudioConfig.SAMPLE_RATE,
+            channels=AudioConfig.CHANNELS,
+            dtype=AudioConfig.FORMAT,
+            blocksize=AudioConfig.CHUNK_SIZE,
+            device=device_index,
+        )
+    except Exception as e:
+        raise RuntimeError(f"Audio stream initialization error: {e}")
 
 
 def record_continously(stream: sd.InputStream, input_queues, result_queue) -> None:
@@ -51,6 +60,7 @@ def record_continously(stream: sd.InputStream, input_queues, result_queue) -> No
         except KeyboardInterrupt:
             print("\nStop recording...")
 
+
 def read_audio_chunk(stream: sd.InputStream, total_chunks: int) -> NDArray:
     audio_chunks = []
     
@@ -74,11 +84,16 @@ def save_to_wav(path: str = LogsConfig.LOG_RECORD_PATH) -> None:
 
 
 def setup_capture() -> None:
+    config = load_interface_config()
+    device_id = config["interface_id"]
     input_queues, result_queue, processes = setup_broker()
     
     try:
-        stream = init_stream()
+        stream = init_stream(device_id)
         record_continously(stream, input_queues, result_queue)
+    except RuntimeError as e:
+        print(e)
+        return None
     finally:
         # Остановка процессов при завершении
         stop_channel_processes(processes, input_queues)
