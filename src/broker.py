@@ -4,10 +4,11 @@ from typing import List
 import time
 
 from process_channel import process_channel
+from collect import setup_collector
 
 def create_queues(channels: int = 8) -> tuple[list[Queue], Queue]:
-    input_queues = [Queue(maxsize = 10) for _ in range(channels)]
-    result_queue = Queue(maxsize = 100)
+    input_queues = [Queue(maxsize=10) for _ in range(channels)]
+    result_queue = Queue(maxsize=100)
     return input_queues, result_queue
 
 
@@ -18,16 +19,13 @@ def clear_all_queues(input_queues: list[Queue], result_queue: Queue) -> None:
                 q.get_nowait()
             except Empty:
                 break
-    
+
     while not result_queue.empty():
         try:
             result_queue.get_nowait()
         except Empty:
             break
 
-
-def is_overloaded(input_queues: list[Queue]) -> bool:
-    return any(q.full() for q in input_queues)
 
 def start_channel_processes(input_queues: List[Queue], result_queue: Queue) -> List[Process]:
     processes = []
@@ -39,29 +37,31 @@ def start_channel_processes(input_queues: List[Queue], result_queue: Queue) -> L
         )
         process.start()
         processes.append(process)
-    
     return processes
+
 
 def stop_channel_processes(processes: List[Process], input_queues: List[Queue]) -> None:
     # Отправка сигналов завершения
     for queue in input_queues:
         queue.put(None)
-    
+
     # Ожидание завершения процессов
     for process in processes:
         process.join(timeout=5)
         if process.is_alive():
             process.terminate()
 
+
 def setup_broker():
     input_queues, result_queue = create_queues()
-    
-    # Очистка очередей перед запуском
+
+    collector = setup_collector(result_queue)
+    collector.start()
+
     clear_all_queues(input_queues, result_queue)
-    
+
     processes = start_channel_processes(input_queues, result_queue)
-    
-    # Даем процессам время на инициализацию
+
     time.sleep(2)
-    
-    return input_queues, result_queue, processes
+
+    return input_queues, result_queue, processes, collector

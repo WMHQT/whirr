@@ -2,35 +2,27 @@
     "version": 1,
     "disable_existing_loggers": false,
     "formatters": {
-        "console": {
-            "format": "[%(levelname)s|%(module)s|L%(lineno)d]: %(message)s"
+        "simple": {
+            "format": "[%(levelname)s|%(name)s|%(module)s]: %(message)s"
         },
         "json": {
-            "()": "log_formatter.JSONFormatter",
-            "fmt_keys": {
-                "level": "levelname",
-                "message": "message",
-                "timestamp": "timestamp",
-                "logger": "name",
-                "module": "module",
-                "function": "funcName",
-                "line": "lineno",
-                "thread_name": "threadName"
-            }
+            "format": "{\"level\": \"%(levelname)s\", \"message\": \"%(message)s\", \"timestamp\": \"%(asctime)s\", \"logger\": \"%(name)s\", \"module\": \"%(module)s\", \"function\": \"%(funcName)s\", \"line\": \"%(lineno)d\", \"thread_name\": \"%(threadName)s\"}",
+            "datefmt": "%Y-%m-%dT%H:%M:%S%z"
         }
     },
     "handlers": {
-        "system_stderr": {
+        "console": {
             "class": "logging.StreamHandler",
-            "level": "WARNING",
-            "formatter": "console",
-            "stream": "ext://sys.stderr"
+            "level": "INFO",
+            "formatter": "simple",
+            "stream": "ext://sys.stdout"
         },
         "system_file": {
             "class": "logging.handlers.RotatingFileHandler",
             "level": "DEBUG",
             "formatter": "json",
             "filename": "logs/system.log.jsonl",
+            "encoding": "utf-8",
             "maxBytes": 5242880,
             "backupCount": 1
         },
@@ -39,37 +31,25 @@
             "level": "DEBUG",
             "formatter": "json",
             "filename": "logs/model.log.jsonl",
+            "encoding": "utf-8",
             "maxBytes": 5242880,
             "backupCount": 1
-        },
-        "system_queue": {
-            "class": "logging.handlers.QueueHandler",
-            "handlers": [
-                "system_stderr",
-                "system_file"
-            ],
-            "respect_handler_level": true
-        },
-        "model_queue": {
-            "class": "logging.handlers.QueueHandler",
-            "handlers": [
-                "model_file"
-            ],
-            "respect_handler_level": true
         }
     },
     "loggers": {
         "system": {
             "level": "DEBUG",
-            "handlers": [
-                "system_queue"
-            ]
+            "handlers": ["console", "system_file"],
+            "propagate": false
         },
         "model": {
             "level": "DEBUG",
-            "handlers": [
-                "model_queue"
-            ],
+            "handlers": ["model_file"],
+            "propagate": false
+        },
+        "model.collect": {
+            "level": "DEBUG",
+            "handlers": ["model_file"],
             "propagate": false
         },
         "model.channel": {
@@ -79,5 +59,9 @@
             ],
             "propagate": false
         }
+    },
+    "root": {
+        "level": "INFO",
+        "handlers": ["console"]
     }
-}    
+}

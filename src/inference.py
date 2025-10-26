@@ -30,23 +30,13 @@ def get_input_name():
     session = get_session()
     return session.get_inputs()[0].name
 
-
 CATEGORY = {
-    0: "car",
-    1: "emv",
-    2: "motorcycle",
-    3: "tram",
-    4: "truck",
+    0: "car", 1: "emv", 2: "motorcycle", 3: "tram", 4: "truck",
 }
 
 TARGET = {
-    0: "acceleration",
-    1: "bell",
-    2: "braking",
-    3: "horn",
-    4: "idling",
-    5: "passing",
-    6: "siren",
+    0: "acceleration", 1: "bell", 2: "braking", 3: "horn",
+    4: "idling", 5: "passing", 6: "siren",
 }
 
 
@@ -57,7 +47,6 @@ def make_prediction(processed_audio: NDArray) -> tuple[tuple[int, float], tuple[
 
     category_pred = _get_prediction(predictions[0][0])
     target_pred = _get_prediction(predictions[1][0])
-
     return (category_pred, target_pred)
 
 
@@ -70,7 +59,6 @@ def _get_prediction(probs: NDArray) -> tuple[int, float]:
 def display_prediction(category_pred: tuple[int, float], target_pred: tuple[int, float]) -> None:
     category_label = CATEGORY.get(category_pred[0])
     target_label = TARGET.get(target_pred[0])
-
     category_score = category_pred[1]
     target_score = target_pred[1]
 
@@ -78,7 +66,7 @@ def display_prediction(category_pred: tuple[int, float], target_pred: tuple[int,
     model_logger.info(f"({category_label}, {category_score:.4f}), ({target_label}, {target_score:.4f})")
 
 
-def do_inference(time_series: NDArray) -> None:
+def do_inference(time_series: NDArray) -> tuple[tuple[int, float], tuple[int, float]]:
     spectogram = convert_time_series_to_spectogram(time_series)
     processed_audio = np.expand_dims(spectogram, axis=(-1, 0))
     category_pred, target_pred = make_prediction(processed_audio)

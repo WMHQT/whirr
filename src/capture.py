@@ -1,15 +1,10 @@
 import sounddevice as sd
 import numpy as np
 from numpy.typing import NDArray
-import wave
 import time
 
-import inference
-from config import (
-    AudioConfig,
-    LogsConfig,
-)
 from broker import setup_broker, stop_channel_processes
+from src.config import AudioConfig, LogsConfig
 from utils.configure_mics import load_interface_config
 
 
@@ -18,7 +13,7 @@ def init_stream(device_index: int | None = None) -> sd.InputStream:
         devices = sd.query_devices()
 
         if device_index is None or device_index < 0 or device_index >= len(devices):
-                raise ValueError(f"Device with id={device_index} is unavailable.")
+            raise ValueError(f"Device with id={device_index} is unavailable.")
 
         return sd.InputStream(
             samplerate=AudioConfig.SAMPLE_RATE,
@@ -40,37 +35,28 @@ def record_continously(stream: sd.InputStream, input_queues, result_queue) -> No
             while True:
                 timestamp = time.time()
                 time_series = read_audio_chunk(stream, total_chunks)
-                
+
                 # Циклическое распределение по каналам
                 target_queue = input_queues[channel_counter]
                 if not target_queue.full():
                     target_queue.put((timestamp, time_series))
-                
+
                 channel_counter = (channel_counter + 1) % len(input_queues)
-                
-                # Неблокирующая проверка результатов
-                try:
-                    while True:
-                        result_timestamp, channel_id, result = result_queue.get_nowait()
-                        category_pred, target_pred = result
-                        print(f"Channel {channel_id}: {category_pred}, {target_pred}")
-                except Empty:
-                    continue
-                    
+
         except KeyboardInterrupt:
             print("\nStop recording...")
 
 
 def read_audio_chunk(stream: sd.InputStream, total_chunks: int) -> NDArray:
     audio_chunks = []
-    
+
     for _ in range(total_chunks):
         chunk, overflow = stream.read(AudioConfig.CHUNK_SIZE)
         # if overflow:
         #     print("Warning: SoundDevice input overflowed")
         audio_chunks.append(chunk)
     time_series = np.concatenate(audio_chunks, axis=0)
-    
+
     return time_series
 
 
@@ -86,8 +72,8 @@ def save_to_wav(path: str = LogsConfig.LOG_RECORD_PATH) -> None:
 def setup_capture() -> None:
     config = load_interface_config()
     device_id = config["interface_id"]
-    input_queues, result_queue, processes = setup_broker()
-    
+    input_queues, result_queue, processes, collector = setup_broker()
+
     try:
         stream = init_stream(device_id)
         record_continously(stream, input_queues, result_queue)
@@ -95,5 +81,6 @@ def setup_capture() -> None:
         print(e)
         return None
     finally:
-        # Остановка процессов при завершении
+        if collector:
+            collector.stop()
         stop_channel_processes(processes, input_queues)
