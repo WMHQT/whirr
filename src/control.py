@@ -1,13 +1,13 @@
 import click
 
-from __init__ import __version__
-from capture import setup_capture
-from logger import setup_logging
-from utils.configure_mics import (
+from . import __version__
+from .capture import setup_capture
+from .logger import setup_logging
+from .utils.configure_mics import (
     list_microphones,
     set_microphones,
 )
-from utils.draw_logo import draw_logo
+from .utils.draw_logo import draw_logo
 
 
 @click.group(invoke_without_command=True)
@@ -25,6 +25,11 @@ def start() -> None:
     """Start recording."""
     click.echo("Start recording...")
     setup_logging()
+
+    # ДОБАВИТЬ запуск брокера и коллектора
+    from broker import setup_broker
+    setup_broker()
+
     setup_capture()
 
 

@@ -1,10 +1,14 @@
 import sounddevice as sd
 import numpy as np
 from numpy.typing import NDArray
-import wave
 
-import inference
-from config import (
+from .broker import setup_broker, stop_channel_processes
+from .utils.configure_mics import load_interface_config
+from .utils.preprocess_audio import convert_time_series_to_spectogram
+from .collect import InferenceResult, get_collector
+
+from . import inference
+from .config import (
     AudioConfig,
     LogsConfig,
 )
@@ -57,5 +61,41 @@ def save_to_wav(path: str = LogsConfig.LOG_RECORD_PATH) -> None:
 
 
 def setup_capture() -> None:
-    stream = init_stream()
-    record_continously(stream)
+    config = load_interface_config()
+    device_id = config["interface_id"]
+    input_queues, result_queue, processes, collector = setup_broker()  # ⭐ ОБНОВИТЬ
+
+    try:
+        stream = init_stream(device_id)
+        record_continously(stream, input_queues, result_queue)
+    except RuntimeError as e:
+        print(e)
+        return None
+    finally:
+        if collector:
+            collector.stop()
+        stop_channel_processes(processes, input_queues)
+
+
+def do_inference(time_series: NDArray, channel_id: int = 0) -> None:
+    spectogram = convert_time_series_to_spectogram(time_series)
+    processed_audio = np.expand_dims(spectogram, axis=(-1, 0))
+    category_pred, target_pred = inference.make_prediction(processed_audio)
+
+    # ⭐ ДОБАВИТЬ ЭТО - отправка в коллектор
+    from collect import get_collector
+    from collect import InferenceResult
+    import time
+
+    collector = get_collector()
+    if collector:
+        result = InferenceResult(
+            channel_id=channel_id,
+            timestamp=time.time(),
+            category_pred=category_pred,
+            target_pred=target_pred
+        )
+        # Нужно отправить в result_queue коллектора
+        # Это требует доработки broker.py
+
+    inference.display_prediction(category_pred, target_pred)
