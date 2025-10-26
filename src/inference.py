@@ -1,16 +1,34 @@
 import numpy as np
 import onnxruntime as ort
 from numpy.typing import NDArray
-import time
+import os
+import threading
 
-from .config import ModelConfig
-from .logger import model_logger
-from .utils.preprocess_audio import convert_time_series_to_spectogram
-from .collect import InferenceResult, get_collector
+from config import ModelConfig
+from logger import model_logger
+from utils.preprocess_audio import convert_time_series_to_spectogram
 
 
-SESSION = ort.InferenceSession(ModelConfig.MODEL)
-INPUT_NAME = SESSION.get_inputs()[0].name
+def create_session():
+    options = ort.SessionOptions()
+    options.intra_op_num_threads = 1
+    options.inter_op_num_threads = 1
+    return ort.InferenceSession(ModelConfig.MODEL, options)
+
+_thread_local = threading.local()
+
+def get_session():
+    if not hasattr(_thread_local, "session"):
+        options = ort.SessionOptions()
+        options.intra_op_num_threads = 1
+        options.inter_op_num_threads = 1
+        _thread_local.session = ort.InferenceSession(ModelConfig.MODEL, options)
+    return _thread_local.session
+
+
+def get_input_name():
+    session = get_session()
+    return session.get_inputs()[0].name
 
 CATEGORY = {
     0: "car", 1: "emv", 2: "motorcycle", 3: "tram", 4: "truck",
@@ -23,7 +41,10 @@ TARGET = {
 
 
 def make_prediction(processed_audio: NDArray) -> tuple[tuple[int, float], tuple[int, float]]:
-    predictions = SESSION.run([], {INPUT_NAME: processed_audio})
+    session = get_session()
+    input_name = get_input_name()
+    predictions = session.run([], {input_name: processed_audio})
+
     category_pred = _get_prediction(predictions[0][0])
     target_pred = _get_prediction(predictions[1][0])
     return (category_pred, target_pred)
@@ -45,23 +66,8 @@ def display_prediction(category_pred: tuple[int, float], target_pred: tuple[int,
     model_logger.info(f"({category_label}, {category_score:.4f}), ({target_label}, {target_score:.4f})")
 
 
-def do_inference(time_series: NDArray, channel_id: int = 0) -> None:
+def do_inference(time_series: NDArray) -> tuple[tuple[int, float], tuple[int, float]]:
     spectogram = convert_time_series_to_spectogram(time_series)
     processed_audio = np.expand_dims(spectogram, axis=(-1, 0))
     category_pred, target_pred = make_prediction(processed_audio)
-
-    # СОЗДАТЬ результат и отправить в коллектор
-    result = InferenceResult(
-        channel_id=channel_id,
-        timestamp=time.time(),
-        category_pred=category_pred,
-        target_pred=target_pred
-    )
-
-    # ⭐ ПРАВИЛЬНЫЙ СПОСОБ ОТПРАВКИ В КОЛЛЕКТОР
-    collector = get_collector()
-    if collector and hasattr(collector, 'result_queue'):
-        collector.result_queue.put(result)
-    else:
-        # Если коллектор не доступен, просто выводим результат
-        display_prediction(category_pred, target_pred)
+    return category_pred, target_pred

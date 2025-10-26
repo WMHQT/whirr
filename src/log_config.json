@@ -51,6 +51,13 @@
             "level": "DEBUG",
             "handlers": ["model_file"],
             "propagate": false
+        },
+        "model.channel": {
+            "level": "DEBUG",
+            "handlers": [
+                "model_queue"
+            ],
+            "propagate": false
         }
     },
     "root": {

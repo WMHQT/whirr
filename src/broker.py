@@ -3,8 +3,8 @@ from queue import Empty
 from typing import List
 import time
 
-from src.process_channel import process_channel
-from src.collect import setup_collector
+from process_channel import process_channel
+from collect import setup_collector
 
 def create_queues(channels: int = 8) -> tuple[list[Queue], Queue]:
     input_queues = [Queue(maxsize=10) for _ in range(channels)]

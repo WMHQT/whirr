@@ -3,8 +3,8 @@ import numpy as np
 import logging
 from multiprocessing import Queue
 
-from .inference import do_inference
-from .collect import InferenceResult
+from inference import do_inference
+from collect import InferenceResult
 
 
 def process_channel(channel_id: int, input_queue: Queue, result_queue: Queue) -> None:
@@ -28,12 +28,11 @@ def process_channel(channel_id: int, input_queue: Queue, result_queue: Queue) ->
 
             # Выполнение инференса
             category_pred, target_pred = do_inference(audio_chunk)
-            result = (category_pred, target_pred)
 
             inference_time = time.time() - start_time
             logger.info(f"Channel {channel_id} inference time: {inference_time:.4f}s")
 
-            # Отправка результата
+            # Отправка результата в коллектор
             inference_result = InferenceResult(
                 channel_id=channel_id,
                 timestamp=timestamp,
